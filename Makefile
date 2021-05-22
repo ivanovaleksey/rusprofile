@@ -4,6 +4,10 @@ MODULE=github.com/ivanovaleksey/rusprofile
 build-server:
 	go build -o ./bin/server ./cmd/server
 
+.PHONY: test
+test:
+	go test -v -count 1 ./...
+
 .PHONY: install-proto
 install-proto:
 	go install \

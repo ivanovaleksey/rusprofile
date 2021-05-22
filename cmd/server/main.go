@@ -3,18 +3,39 @@ package main
 import (
 	"context"
 	"fmt"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/ivanovaleksey/rusprofile/app/server"
 	"github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
-	"github.com/ivanovaleksey/rusprofile/server"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"log"
 	"net"
 	"net/http"
 )
 
 func main() {
-	srv := grpc.NewServer()
+	zapLogger, _ := zap.NewDevelopment()
+	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
+
+	handler := func(p interface{}) (err error) {
+		zapLogger.Error("panic occurred", zap.Any("err", p))
+		return status.Errorf(codes.Internal, "%v", p)
+	}
+
+	srv := grpc.NewServer(grpc.UnaryInterceptor(
+		grpc_middleware.ChainUnaryServer(
+			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(handler)),
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.UnaryServerInterceptor(zapLogger),
+		),
+	))
 	impl := server.NewServer()
 
 	rusprofile.RegisterRusProfileServiceServer(srv, impl)
