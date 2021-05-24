@@ -1,5 +1,6 @@
 MODULE=github.com/ivanovaleksey/rusprofile
 SWAGGER_VERSION = 2.2.10
+DOCKER_IMAGE=ramone/rusprofile:v0.1
 
 .PHONY: build-server
 build-server:
@@ -9,8 +10,8 @@ build-server:
 test:
 	go test -v -count 1 ./...
 
-.PHONY: install-proto
-install-proto:
+.PHONY: install-proto-tools
+install-proto-tools:
 	go install \
 		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
 		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
@@ -44,3 +45,11 @@ swagger-ui: doc
 .PHONY: clean
 clean:
 	rm -rf doc
+
+.PHONY: docker-build
+docker-build:
+	docker build -t ${DOCKER_IMAGE} .
+
+.PHONY: docker-push
+docker-push:
+	docker push ${DOCKER_IMAGE}
