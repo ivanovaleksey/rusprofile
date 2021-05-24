@@ -8,6 +8,7 @@ import (
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/ivanovaleksey/rusprofile/app/config"
+	"github.com/ivanovaleksey/rusprofile/app/gateway"
 	"github.com/ivanovaleksey/rusprofile/app/server"
 	"github.com/ivanovaleksey/rusprofile/pkg/closer"
 	"github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
@@ -71,7 +72,7 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 		appCloser.Add(wrap.Close)
 
 		lis, _ := net.Listen("tcp", cfg.GRPCAddr)
-		l.Info("starting")
+		l.Info("listen", zap.String("addr", cfg.GRPCAddr))
 		if err := grpcSrv.Serve(lis); err != nil {
 			l.Error("serve error", zap.Error(err))
 			return
@@ -98,7 +99,7 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 
 		srv := &http.Server{
 			Addr:         cfg.HTTPAddr,
-			Handler:      mux,
+			Handler:      gateway.New(mux),
 			ReadTimeout:  httpReadTimeout,
 			WriteTimeout: httpWriteTimeout,
 		}
@@ -116,7 +117,7 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 			return nil
 		})
 
-		l.Info("starting")
+		l.Info("listen", zap.String("addr", cfg.HTTPAddr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			l.Error("serve error", zap.Error(err))
 			return

@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/PuerkitoBio/goquery v1.6.1
+	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
