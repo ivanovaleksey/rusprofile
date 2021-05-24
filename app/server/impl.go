@@ -5,17 +5,21 @@ import (
 	"github.com/ivanovaleksey/rusprofile/app/services/rusprofile"
 	pb "github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"io"
 )
 
 type Server struct {
 	pb.UnimplementedRusProfileServiceServer
 
+	logger        *zap.Logger
 	rusprofileSrv RusprofileService
 }
 
 type RusprofileService interface {
+	io.Closer
 	GetCompanyInfo(ctx context.Context, inn string) (rusprofile.CompanyInfo, error)
 }
 
@@ -49,4 +53,8 @@ func (srv *Server) GetCompanyInfo(ctx context.Context, req *pb.GetCompanyInfoReq
 		Director: info.Director,
 	}
 	return resp, nil
+}
+
+func (srv *Server) Close() error {
+	return srv.rusprofileSrv.Close()
 }

@@ -50,6 +50,10 @@ func NewService(opts ...Option) (*Service, error) {
 	return srv, nil
 }
 
+func (srv *Service) Close() error {
+	return nil
+}
+
 type CompanyInfo struct {
 	Inn      string
 	Kpp      string
