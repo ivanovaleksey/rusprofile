@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ivanovaleksey/rusprofile/app/services/rusprofile"
 	pb "github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,14 +19,19 @@ type RusprofileService interface {
 	GetCompanyInfo(ctx context.Context, inn string) (rusprofile.CompanyInfo, error)
 }
 
-func NewServer(opts ...Option) *Server {
+func NewServer(opts ...Option) (*Server, error) {
+	service, err := rusprofile.NewService()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't create service")
+	}
+
 	srv := &Server{
-		rusprofileSrv: rusprofile.NewService(),
+		rusprofileSrv: service,
 	}
 	for _, opt := range opts {
 		opt(srv)
 	}
-	return srv
+	return srv, nil
 }
 
 func (srv *Server) GetCompanyInfo(ctx context.Context, req *pb.GetCompanyInfoRequest) (*pb.GetCompanyInfoResponse, error) {

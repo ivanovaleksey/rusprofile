@@ -21,11 +21,11 @@ import (
 )
 
 func main() {
-	zapLogger, _ := zap.NewDevelopment()
-	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
+	logger, _ := zap.NewDevelopment()
+	grpc_zap.ReplaceGrpcLoggerV2(logger)
 
 	handler := func(p interface{}) (err error) {
-		zapLogger.Error("panic occurred", zap.Any("err", p))
+		logger.Error("panic occurred", zap.Any("err", p))
 		return status.Errorf(codes.Internal, "%v", p)
 	}
 
@@ -33,10 +33,13 @@ func main() {
 		grpc_middleware.ChainUnaryServer(
 			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(handler)),
 			grpc_ctxtags.UnaryServerInterceptor(),
-			grpc_zap.UnaryServerInterceptor(zapLogger),
+			grpc_zap.UnaryServerInterceptor(logger),
 		),
 	))
-	impl := server.NewServer()
+	impl, err := server.NewServer()
+	if err != nil {
+		logger.Fatal("can't create server", zap.Error(err))
+	}
 
 	rusprofile.RegisterRusProfileServiceServer(srv, impl)
 	reflection.Register(srv)
@@ -54,7 +57,7 @@ func main() {
 		fmt.Println(err)
 	}()
 
-	grpcListener, _ := net.Listen("tcp", ":7001")
-	err := srv.Serve(grpcListener)
-	fmt.Println(err)
+	lis, _ := net.Listen("tcp", ":7001")
+	serveErr := srv.Serve(lis)
+	fmt.Println(serveErr)
 }

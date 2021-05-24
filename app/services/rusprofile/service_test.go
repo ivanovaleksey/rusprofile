@@ -44,7 +44,8 @@ func TestService_GetCompanyInfo(t *testing.T) {
 
 		for _, testCase := range testCases {
 			t.Run(testCase.name, func(t *testing.T) {
-				srv := NewService(WithDataProvider(&fileClient{}))
+				srv, err := NewService(WithDataProvider(&fileClient{}))
+				require.NoError(t, err)
 
 				path := fmt.Sprintf("testdata/%s.html", testCase.name)
 				info, err := srv.GetCompanyInfo(context.Background(), path)

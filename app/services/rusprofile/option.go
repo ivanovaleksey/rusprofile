@@ -4,6 +4,12 @@ type Option func(*Service)
 
 func WithDataProvider(p dataProvider) Option {
 	return func(s *Service) {
-		s.provider = p
+		s.data = p
+	}
+}
+
+func WithCacheProvider(p cacheProvider) Option {
+	return func(s *Service) {
+		s.cache = p
 	}
 }
