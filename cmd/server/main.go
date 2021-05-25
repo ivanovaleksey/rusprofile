@@ -10,8 +10,9 @@ import (
 	"github.com/ivanovaleksey/rusprofile/app/config"
 	"github.com/ivanovaleksey/rusprofile/app/gateway"
 	"github.com/ivanovaleksey/rusprofile/app/server"
+	"github.com/ivanovaleksey/rusprofile/app/services/rusprofile"
 	"github.com/ivanovaleksey/rusprofile/pkg/closer"
-	"github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
+	pb "github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -45,10 +46,7 @@ func main() {
 }
 
 func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appCloser *closer.Closer) {
-	srv, err := server.NewServer(server.WithLogger(logger))
-	if err != nil {
-		logger.Fatal("can't create server", zap.Error(err))
-	}
+	srv := buildServer(logger, cfg)
 	{
 		wrap := newCloserWrapper(srv, logger.With(zap.String("component", "app")))
 		appCloser.Add(wrap.Close)
@@ -65,7 +63,7 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 			),
 		))
 
-		rusprofile.RegisterRusProfileServiceServer(grpcSrv, srv)
+		pb.RegisterRusProfileServiceServer(grpcSrv, srv)
 		reflection.Register(grpcSrv)
 
 		wrap := newCloserWrapper(grpcCloser{srv: grpcSrv}, l)
@@ -92,7 +90,7 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 		opts := []grpc.DialOption{
 			grpc.WithInsecure(),
 		}
-		err := rusprofile.RegisterRusProfileServiceHandlerFromEndpoint(ctx, mux, cfg.GRPCAddr, opts)
+		err := pb.RegisterRusProfileServiceHandlerFromEndpoint(ctx, mux, cfg.GRPCAddr, opts)
 		if err != nil {
 			l.Fatal("can't register http gateway", zap.Error(err))
 		}
@@ -123,4 +121,25 @@ func runApps(ctx context.Context, cfg config.Config, logger *zap.Logger, appClos
 			return
 		}
 	}()
+}
+
+func buildServer(logger *zap.Logger, cfg config.Config) *server.Server {
+	serviceOpts := []rusprofile.Option{
+		rusprofile.WithDataProvider(rusprofile.NewWebClient(cfg.Client)),
+	}
+	service, err := rusprofile.NewService(serviceOpts...)
+	if err != nil {
+		logger.Fatal("can't create service", zap.Error(err))
+	}
+
+	serverOpts := []server.Option{
+		server.WithLogger(logger),
+		server.WithRusprofileService(service),
+	}
+	srv, err := server.NewServer(serverOpts...)
+	if err != nil {
+		logger.Fatal("can't create server", zap.Error(err))
+	}
+
+	return srv
 }

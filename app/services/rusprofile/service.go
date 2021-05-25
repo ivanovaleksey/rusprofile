@@ -2,13 +2,10 @@ package rusprofile
 
 import (
 	"context"
-	"github.com/PuerkitoBio/goquery"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/ivanovaleksey/rusprofile/pkg/models"
 	"github.com/pkg/errors"
 	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const cacheSize = 1000
@@ -16,26 +13,27 @@ const cacheSize = 1000
 var ErrNotFound = errors.New("rusprofile: not found")
 
 type Service struct {
-	data  dataProvider
-	cache cacheProvider
+	data   DataProvider
+	cache  CacheProvider
+	parser Parser
 }
 
-type dataProvider interface {
+type DataProvider interface {
 	GetData(ctx context.Context, inn string) (io.ReadCloser, error)
 }
 
-type cacheProvider interface {
+type CacheProvider interface {
 	Add(key, value interface{}) bool
 	Get(key interface{}) (interface{}, bool)
 }
 
+type Parser interface {
+	Parse(io.Reader) (models.CompanyInfo, error)
+}
+
 func NewService(opts ...Option) (*Service, error) {
 	srv := &Service{
-		data: &webClient{
-			httpClient: &http.Client{
-				Timeout: 5 * time.Second,
-			},
-		},
+		parser: parser{},
 	}
 	cache, err := lru.New(cacheSize)
 	if err != nil {
@@ -54,51 +52,23 @@ func (srv *Service) Close() error {
 	return nil
 }
 
-type CompanyInfo struct {
-	Inn      string
-	Kpp      string
-	Title    string
-	Director string
-}
-
-func (srv *Service) GetCompanyInfo(ctx context.Context, inn string) (CompanyInfo, error) {
+func (srv *Service) GetCompanyInfo(ctx context.Context, inn string) (models.CompanyInfo, error) {
 	entry, ok := srv.cache.Get(inn)
 	if ok {
-		return entry.(CompanyInfo), nil
+		return entry.(models.CompanyInfo), nil
 	}
 
 	body, err := srv.data.GetData(ctx, inn)
 	if err != nil {
-		return CompanyInfo{}, errors.Wrap(err, "can't get data")
+		return models.CompanyInfo{}, errors.Wrap(err, "can't get data")
 	}
 	defer body.Close()
 
-	doc, err := goquery.NewDocumentFromReader(body)
+	info, err := srv.parser.Parse(body)
 	if err != nil {
-		return CompanyInfo{}, errors.Wrap(err, "can't build document")
+		return models.CompanyInfo{}, err
 	}
 
-	foundInn := doc.Find("#clip_inn").Text()
-	if foundInn == "" {
-		return CompanyInfo{}, ErrNotFound
-	}
-
-	info := CompanyInfo{
-		Inn:      foundInn,
-		Kpp:      doc.Find("#clip_kpp").Text(),
-		Title:    strings.TrimSpace(doc.Find("h1[itemprop='name']").Text()),
-		Director: getDirector(doc),
-	}
 	srv.cache.Add(inn, info)
-
 	return info, nil
-}
-
-func getDirector(doc *goquery.Document) string {
-	return doc.Find("span.company-info__title").
-		FilterFunction(func(_i int, selection *goquery.Selection) bool {
-			return selection.Text() == "Руководитель"
-		}).
-		SiblingsFiltered("span.company-info__text").
-		Text()
 }

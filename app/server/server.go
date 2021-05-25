@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"github.com/ivanovaleksey/rusprofile/app/services/rusprofile"
+	"github.com/ivanovaleksey/rusprofile/pkg/models"
 	pb "github.com/ivanovaleksey/rusprofile/pkg/pb/rusprofile"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,18 +20,11 @@ type Server struct {
 
 type RusprofileService interface {
 	io.Closer
-	GetCompanyInfo(ctx context.Context, inn string) (rusprofile.CompanyInfo, error)
+	GetCompanyInfo(ctx context.Context, inn string) (models.CompanyInfo, error)
 }
 
 func NewServer(opts ...Option) (*Server, error) {
-	service, err := rusprofile.NewService()
-	if err != nil {
-		return nil, errors.Wrap(err, "can't create service")
-	}
-
-	srv := &Server{
-		rusprofileSrv: service,
-	}
+	srv := &Server{}
 	for _, opt := range opts {
 		opt(srv)
 	}

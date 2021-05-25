@@ -6,9 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
-
-const host = "https://www.rusprofile.ru/"
 
 type fileClient struct{}
 
@@ -20,16 +20,30 @@ func (c *fileClient) GetData(_ context.Context, inn string) (io.ReadCloser, erro
 	return file, err
 }
 
-type webClient struct {
+type WebClient struct {
+	cfg        Config
 	httpClient httpClient
+}
+
+func NewWebClient(cfg Config) *WebClient {
+	return &WebClient{
+		cfg: cfg,
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
+		},
+	}
+}
+
+type Config struct {
+	URL string `default:"https://www.rusprofile.ru/"`
 }
 
 type httpClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-func (c *webClient) GetData(ctx context.Context, inn string) (io.ReadCloser, error) {
-	url := host + "search?query=" + inn
+func (c *WebClient) GetData(ctx context.Context, inn string) (io.ReadCloser, error) {
+	url := strings.TrimSuffix(c.cfg.URL, "/") + "/search?query=" + inn
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create request")

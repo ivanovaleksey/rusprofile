@@ -45,6 +45,7 @@ swagger-ui: doc
 .PHONY: clean
 clean:
 	rm -rf doc
+	find . -name '*.mock.go' -delete
 
 .PHONY: docker-build
 docker-build:
@@ -53,3 +54,7 @@ docker-build:
 .PHONY: docker-push
 docker-push:
 	docker push ${DOCKER_IMAGE}
+
+.PHONY: gogen
+gogen:
+	go generate ./...
