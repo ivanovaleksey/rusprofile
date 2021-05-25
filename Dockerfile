@@ -4,8 +4,8 @@ RUN apk add --update make
 
 WORKDIR /build
 
-COPY go.mod .
-COPY go.sum .
+COPY go.* .
+COPY pkg/pb/rusprofile/go.* pkg/pb/rusprofile/
 RUN go mod download
 
 COPY Makefile Makefile
